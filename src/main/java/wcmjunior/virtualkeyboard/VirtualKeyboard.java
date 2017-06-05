@@ -4,10 +4,13 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridLayout;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
 import java.awt.event.KeyEvent;
 import java.util.HashMap;
 import java.util.Map;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.text.BadLocationException;
@@ -26,7 +29,7 @@ import javax.swing.text.JTextComponent;
  *
  * @author Wilson de Carvalho
  */
-public class VirtualKeyboard {
+public class VirtualKeyboard implements FocusListener {
 
     /**
      * Private class for storing key specification.
@@ -121,7 +124,8 @@ public class VirtualKeyboard {
     };
 
     private final Map<Key, JButton> buttons;
-    private Component focusedComponent;
+    private Component currentComponent;
+    private JTextComponent lastFocusedTextComponent;
     private JFrame frame;
     private boolean isCapsLockPressed = false;
     private boolean isShiftPressed = false;
@@ -140,9 +144,9 @@ public class VirtualKeyboard {
      */
     public void show(JFrame frame, JPanel keyboardPanel) {
         this.frame = frame;
-        focusedComponent = frame.getFocusOwner();
-        if (focusedComponent == null) {
-            focusedComponent = frame.getFocusTraversalPolicy().getFirstComponent(frame);
+        currentComponent = frame.getFocusOwner();
+        if (currentComponent == null) {
+            currentComponent = frame.getFocusTraversalPolicy().getFirstComponent(frame);
         }
 
         keyboardPanel.setLayout(new GridLayout(5, 1));
@@ -168,6 +172,7 @@ public class VirtualKeyboard {
             } else {
                 button = new JButton(key.value);
                 button.setPreferredSize(new Dimension(buttonWidth, buttonHeight));
+                button.addFocusListener(this);
                 buttons.put(key, button);
                 button.addActionListener(e -> actionListener(key));
             }
@@ -177,11 +182,11 @@ public class VirtualKeyboard {
     }
 
     private void actionListener(Key key) {
-        JTextComponent currentTextComponent = getCurrentTextComponent();
-        if (currentTextComponent == null) {
+        if (currentComponent == null || !(currentComponent instanceof JComponent)) {
             return;
         }
-        currentTextComponent.requestFocus();
+        ((JComponent) currentComponent).requestFocus();
+        JTextComponent currentTextComponent = getCurrentTextComponent();
         switch (key.keyCode) {
             case KeyEvent.VK_CAPS_LOCK:
                 capsLockPressed();
@@ -190,12 +195,18 @@ public class VirtualKeyboard {
                 shiftPressed();
                 break;
             case KeyEvent.VK_BACK_SPACE:
+                if (currentTextComponent == null) {
+                    return;
+                }
                 backspacePressed(currentTextComponent);
                 break;
             case KeyEvent.VK_TAB:
-                tabPressed(currentTextComponent);
+                tabPressed();
                 break;
             default:
+                if (currentTextComponent == null) {
+                    return;
+                }
                 otherKeyPressed(key, currentTextComponent);
                 break;
         }
@@ -244,7 +255,7 @@ public class VirtualKeyboard {
     }
 
     private void backspacePressed(JTextComponent component) {
-        if (getCurrentComponent() instanceof JTextComponent) {
+        if (currentComponent instanceof JTextComponent) {
             int caretPosition = component.getCaretPosition();
             if (!component.getText().isEmpty() && caretPosition > 0) {
                 try {
@@ -258,11 +269,13 @@ public class VirtualKeyboard {
         }
     }
 
-    private void tabPressed(JTextComponent currentTextComponent) {
-        Component nextComponent = currentTextComponent.getNextFocusableComponent();
-        if (nextComponent != null) {
-            focusedComponent = nextComponent;
-            nextComponent.requestFocus();
+    private void tabPressed() {
+        if (currentComponent != null && currentComponent instanceof JComponent) {
+            Component nextComponent = ((JComponent) currentComponent).getNextFocusableComponent();
+            if (nextComponent != null) {
+                nextComponent.requestFocus();
+                this.currentComponent = nextComponent;
+            }
         }
     }
 
@@ -357,18 +370,7 @@ public class VirtualKeyboard {
         }
     }
 
-    public Component getCurrentComponent() {
-        // If the focus is on this keyboard, I must return the previous 
-        // focused component.
-        if (frame.getFocusOwner() instanceof JButton
-                && !buttons.containsValue((JButton) frame.getFocusOwner())) {
-            focusedComponent = frame.getFocusOwner();
-        }
-        return focusedComponent;
-    }
-
     private JTextComponent getCurrentTextComponent() {
-        Component currentComponent = getCurrentComponent();
         if (currentComponent != null && currentComponent instanceof JTextComponent) {
             return (JTextComponent) currentComponent;
         } else {
@@ -391,5 +393,18 @@ public class VirtualKeyboard {
             component.setCaretPosition(caretPosition + 1);
         } catch (BadLocationException ex) {
         }
+    }
+
+    @Override
+    public void focusGained(FocusEvent e) {
+        Component previousComponent = e.getOppositeComponent();
+        if (previousComponent != null && !(previousComponent instanceof JButton
+                && buttons.values().contains((JButton) previousComponent))) {
+            this.currentComponent = previousComponent;
+        }
+    }
+
+    @Override
+    public void focusLost(FocusEvent e) {
     }
 }
