@@ -1,0 +1,11 @@
+*.class
+*.classpath
+target/
+bin/
+out/
+nbproject/
+build/
+/log
+.idea/
+.gradle/
+/.nb-gradle/
