@@ -8,7 +8,7 @@ Don't mind to improve this project and propose modifications. It was designed as
 
 Ultimately, if you find a better way to control accentuation (which I think was not an elegant code), please let me know. :-)
 
-[Preview](keyboard_image.png)
+![Virtual keyboard preview](keyboard_image.png)
 
 ## How to use
 
@@ -22,7 +22,7 @@ The usage of the virtual keyboard is straightforward. You just have to create a 
 	vk.show(frame, frame.getKeyboardPanel());
 ```
 
-** Inside the frame class. In this sense, you must override the setVisible method, call the super class method and then show the keyboard.
+* Inside the frame class. In this sense, you must override the setVisible method, call the super class method and then show the keyboard.
 
 ```
 	@Override
